@@ -4,99 +4,6 @@
 
 ---
 
-## English
-
-### Problem
-
-When opening an email, carbonio-mails-ui sends a `GetMsgRequest` with `max=250000` (250 KB). If the total HTML/text body exceeds this limit, the server truncates the content and returns `truncated=1`. The UI then shows a banner:
-
-> *This message has been truncated due to its length* — **Load message**
-
-Emails that reliably trigger truncation:
-
-- **Outlook emails with attachments** — HTML body is bloated with Word styles and Microsoft XML namespaces even for two lines of text
-- **Forwarded chains** (`FW: FW: FW:`) — accumulated quoted HTML from each iteration
-- **HTML reports** from ERP/CRM systems with large tables
-- Long **newsletters**
-
-### Solution
-
-The patch removes the `max` parameter from the preview request. Without `max`, the server returns the full message — exactly as the "Load message" button does.
-
-Change in `5.*.chunk.js` (carbonio-mails-ui):
-
-```
-# Before (original):
-{msgId:t,max:25e4,shouldMarkAsRead:e}
-
-# After (patched):
-{msgId:t,shouldMarkAsRead:e}
-```
-
-### Usage
-
-```bash
-python3 toggle.py
-```
-
-The script detects the current state and offers to toggle:
-
-```
-File: /opt/zextras/web/iris/carbonio-mails-ui/[hash]/5.*.chunk.js
-State: ENABLED — messages are truncated at 250 KB on preview
-
-Action: DISABLE truncation (messages will always load in full)
-Press Enter to confirm, Ctrl+C to cancel:
-OK: truncation DISABLED. The "Load message" banner will no longer appear.
-```
-
-If the patch is already applied, it will offer to restore the default behavior.
-
-#### Check mode (non-interactive)
-
-```bash
-python3 toggle.py check
-# exit=0 — patch is active (truncation disabled)
-# exit=1 — patch is not active (default behavior)
-```
-
-Useful for automated checks in post-upgrade scripts.
-
-### After `apt upgrade carbonio-mails-ui`
-
-When the `carbonio-mails-ui` package is updated, the chunk directory hash changes. The script automatically finds the new chunk by content — just run it again:
-
-```bash
-python3 toggle.py
-```
-
-If the script can't find the chunk (the filename `5.*.chunk.js` changed):
-
-```bash
-grep -rl 'max:25e4,shouldMarkAsRead' /opt/zextras/web/iris/carbonio-mails-ui/
-```
-
-### Compatibility
-
-Tested on **Carbonio CE 26.3.2** (Ubuntu 22.04 / 24.04).
-
-No service restart required — changes take effect on the next browser page reload.
-
-### How it works
-
-carbonio-mails-ui has two functions for fetching a message:
-
-| Function | Triggered by | `max` |
-|----------|-------------|-------|
-| `vT` / `p` | Automatically on open | `250000` |
-| `MA` / `m` | "Load message" button | not sent |
-
-The `max` parameter in `GetMsgRequest` (Zimbra SOAP API) limits the total text content of all returned MIME body parts. When exceeded, the server sets `truncated=1` on the truncated part — the UI reads this flag and shows the banner.
-
-The patch brings the preview request in line with the "Load message" behavior.
-
----
-
 ## Русский
 
 ### Проблема
@@ -187,3 +94,96 @@ grep -rl 'max:25e4,shouldMarkAsRead' /opt/zextras/web/iris/carbonio-mails-ui/
 Параметр `max` в `GetMsgRequest` (SOAP API Zimbra) ограничивает суммарный объём текстового контента всех body-частей MIME, возвращаемых сервером. При превышении сервер ставит `truncated=1` — UI читает этот флаг и показывает баннер.
 
 Патч приводит preview-запрос к тому же поведению, что и кнопка «Загрузить сообщение».
+
+---
+
+## English
+
+### Problem
+
+When opening an email, carbonio-mails-ui sends a `GetMsgRequest` with `max=250000` (250 KB). If the total HTML/text body exceeds this limit, the server truncates the content and returns `truncated=1`. The UI then shows a banner:
+
+> *This message has been truncated due to its length* — **Load message**
+
+Emails that reliably trigger truncation:
+
+- **Outlook emails with attachments** — HTML body is bloated with Word styles and Microsoft XML namespaces even for two lines of text
+- **Forwarded chains** (`FW: FW: FW:`) — accumulated quoted HTML from each iteration
+- **HTML reports** from ERP/CRM systems with large tables
+- Long **newsletters**
+
+### Solution
+
+The patch removes the `max` parameter from the preview request. Without `max`, the server returns the full message — exactly as the "Load message" button does.
+
+Change in `5.*.chunk.js` (carbonio-mails-ui):
+
+```
+# Before (original):
+{msgId:t,max:25e4,shouldMarkAsRead:e}
+
+# After (patched):
+{msgId:t,shouldMarkAsRead:e}
+```
+
+### Usage
+
+```bash
+python3 toggle.py
+```
+
+The script detects the current state and offers to toggle:
+
+```
+File: /opt/zextras/web/iris/carbonio-mails-ui/[hash]/5.*.chunk.js
+State: ENABLED — messages are truncated at 250 KB on preview
+
+Action: DISABLE truncation (messages will always load in full)
+Press Enter to confirm, Ctrl+C to cancel:
+OK: truncation DISABLED. The "Load message" banner will no longer appear.
+```
+
+If the patch is already applied, it will offer to restore the default behavior.
+
+#### Check mode (non-interactive)
+
+```bash
+python3 toggle.py check
+# exit=0 — patch is active (truncation disabled)
+# exit=1 — patch is not active (default behavior)
+```
+
+Useful for automated checks in post-upgrade scripts.
+
+### After `apt upgrade carbonio-mails-ui`
+
+When the `carbonio-mails-ui` package is updated, the chunk directory hash changes. The script automatically finds the new chunk by content — just run it again:
+
+```bash
+python3 toggle.py
+```
+
+If the script can't find the chunk (the filename `5.*.chunk.js` changed):
+
+```bash
+grep -rl 'max:25e4,shouldMarkAsRead' /opt/zextras/web/iris/carbonio-mails-ui/
+```
+
+### Compatibility
+
+Tested on **Carbonio CE 26.3.2** (Ubuntu 22.04 / 24.04).
+
+No service restart required — changes take effect on the next browser page reload.
+
+### How it works
+
+carbonio-mails-ui has two functions for fetching a message:
+
+| Function | Triggered by | `max` |
+|----------|-------------|-------|
+| `vT` / `p` | Automatically on open | `250000` |
+| `MA` / `m` | "Load message" button | not sent |
+
+The `max` parameter in `GetMsgRequest` (Zimbra SOAP API) limits the total text content of all returned MIME body parts. When exceeded, the server sets `truncated=1` on the truncated part — the UI reads this flag and shows the banner.
+
+The patch brings the preview request in line with the "Load message" behavior.
