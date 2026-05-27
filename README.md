@@ -1,6 +1,6 @@
 # carbonio-mails-fix-truncation
 
-[🇷🇺 Русский](#русский) | [🇬🇧 English](#english)
+[🇷🇺 Русский](#русский) | [<sup>en</sup> English](#english)
 
 ---
 
